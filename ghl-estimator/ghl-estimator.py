@@ -11,90 +11,180 @@ _loginv = lambda x: sgn(x) * (np.exp(np.abs(x)) - 1)
 _loginvp = lambda x: np.exp(np.abs(x))
 
 def _generalized_huber_loss_and_gradient(w, X, y, epsilon, link_dict):
+    """Returns the generalized Huber loss and the gradient.
+    Parameters
+    ----------
+    w : ndarray, shape (n_features,) or (n_features + 1,)
+        Feature vector.
+        w[:n_features] gives the coefficients if the intercept is not fit
+        w[1:1+n_features] gives the coefficients and w[0] gives the intercept 
+        if the intercept is fit.
+    X : ndarray, shape (n_samples, n_features)
+        Input data.
+    y : ndarray, shape (n_samples,)
+        Target vector.
+    epsilon : float
+        Parameter of the generalized Huber estimator.
+    Returns
+    -------
+    loss : float
+        Generalized Huber loss.
+    gradient : ndarray, shape (len(w))
+        Returns the derivative of the generalized Huber loss with respect to 
+        each coefficient and the intercept as a vector.
+    """
+    n_features = X.shape[1]
+    fit_intercept = (n_features + 1 == w.shape[0])
     
-        n_features = X.shape[1]
-        fit_intercept = (n_features + 1 == w.shape[0])
-        
-        if fit_intercept:
-            X = np.append(np.ones(len(y)).reshape(-1,1),X,axis=1)
+    if fit_intercept:
+        X = np.append(np.ones(len(y)).reshape(-1,1),X,axis=1)
+
+    yhat = np.dot(X,w)
     
-        yhat = np.dot(X,w)
+    # Define the link function (g), it's inverse (ginv) and the derivative of 
+    # the latter (ginvp).
+    g = link_dict['g']
+    ginv = link_dict['ginv']
+    ginvp = link_dict['ginvp']
+
+    # Distinguish between values of abolut error smaller or larger than epsilon.
+    # The distinction is done on the "link scale" defined by g(y).    
+    diff = g(y) - yhat
+    absdiff = np.abs(diff)
+
+    bool1_l = ((absdiff <= epsilon) & (diff < 0))
+    bool1_r = ((absdiff <= epsilon) & (diff >= 0))
+    bool2_l = ((absdiff > epsilon) & (diff < 0))
+    bool2_r = ((absdiff > epsilon) & (diff >= 0))
+
+    # Compute the gradient and the loss.
+    grad = np.zeros(len(y))
+    loss = np.zeros(len(y))
+
+    # Calculation of terms repeatedly needed in the loss and gradient computation.
+    A = np.zeros(len(y))
+    Ap = np.zeros(len(y))
+    B = np.zeros(len(y))
+
+    A[bool1_l] = ginv(yhat[bool1_l] - epsilon) - ginv(yhat[bool1_l])
+    A[bool1_r] = ginv(yhat[bool1_r] + epsilon) - ginv(yhat[bool1_r])
+    Ap[bool1_l] = ginvp(yhat[bool1_l] - epsilon) - ginvp(yhat[bool1_l])
+    Ap[bool1_r] = ginvp(yhat[bool1_r] + epsilon) - ginvp(yhat[bool1_r])
+
+    A[bool2_l] = ginv(yhat[bool2_l] - epsilon) - ginv(yhat[bool2_l])
+    A[bool2_r] = ginv(yhat[bool2_r] + epsilon) - ginv(yhat[bool2_r])
+    Ap[bool2_l] = ginvp(yhat[bool2_l] - epsilon) - ginvp(yhat[bool2_l])
+    Ap[bool2_r] = ginvp(yhat[bool2_r] + epsilon) - ginvp(yhat[bool2_r])
+
+    B[bool1_l] = y[bool1_l] - ginv(g(y[bool1_l]) + epsilon)
+    B[bool1_r] = y[bool1_r] - ginv(g(y[bool1_r]) - epsilon)
     
-        g = link_dict['g']
-        ginv = link_dict['ginv']
-        ginvp = link_dict['ginvp']
+    B[bool2_l] = y[bool2_l] - ginv(g(y[bool2_l]) + epsilon)
+    B[bool2_r] = y[bool2_r] - ginv(g(y[bool2_r]) - epsilon)    
+
+    # loss calculation   
+    loss[bool1_l] = (y[bool1_l]-ginv(yhat[bool1_l]))**2 * \
+                    (1/np.abs(A[bool1_l]) + 1/np.abs(B[bool1_l]))
+    loss[bool1_r] = (y[bool1_r]-ginv(yhat[bool1_r]))**2 * \
+                    (1/np.abs(A[bool1_r]) + 1/np.abs(B[bool1_r]))
     
-        diff = g(y) - yhat
-        absdiff = np.abs(diff)
+    loss[bool2_l] = 4*np.abs(y[bool2_l] - ginv(yhat[bool2_l])) - \
+                    (np.abs(A[bool2_l]) + np.abs(B[bool2_l]))
+    loss[bool2_r] = 4*np.abs(y[bool2_r] - ginv(yhat[bool2_r])) - \
+                    (np.abs(A[bool2_r]) + np.abs(B[bool2_r]))
     
-        bool1_l = ((absdiff <= epsilon) & (diff < 0))
-        bool1_r = ((absdiff <= epsilon) & (diff >= 0))
-        bool2_l = ((absdiff > epsilon) & (diff < 0))
-        bool2_r = ((absdiff > epsilon) & (diff >= 0))
+    loss = np.sum(loss)
     
-        grad = np.zeros(len(y))
-        loss = np.zeros(len(y))
+    # gradient calculation    
+    grad[bool1_l] = -2*(y[bool1_l]-ginv(yhat[bool1_l]))*ginvp(yhat[bool1_l]) * \
+                    (1/np.abs(A[bool1_l]) + 1/np.abs(B[bool1_l])) - \
+                    (y[bool1_l]-ginv(yhat[bool1_l]))**2 * \
+                    (1/(np.abs(A[bool1_l])**2))*sgn(A[bool1_l])*Ap[bool1_l]
+
+    grad[bool1_r] = -2*(y[bool1_r]-ginv(yhat[bool1_r]))*ginvp(yhat[bool1_r]) * \
+                    (1/np.abs(A[bool1_r]) + 1/np.abs(B[bool1_r])) - \
+                    (y[bool1_r]-ginv(yhat[bool1_r]))**2 * \
+                    (1/(np.abs(A[bool1_r])**2))*sgn(A[bool1_r])*Ap[bool1_r]    
+
+    grad[bool2_l] = -4 * sgn(y[bool2_l] - ginv(yhat[bool2_l])) * ginvp(
+                    yhat[bool2_l]) - sgn(A[bool2_l]) * Ap[bool2_l]
+
+    grad[bool2_r] = -4 * sgn(y[bool2_r] - ginv(yhat[bool2_r])) * ginvp(
+                    yhat[bool2_r]) - sgn(A[bool2_r]) * Ap[bool2_r]    
+            
+    grad = np.dot(grad.reshape(1,-1),X)
+
+    del A ,Ap ,B ,bool1_l ,bool1_r ,bool2_l ,bool2_r 
     
-        A = np.zeros(len(y))
-        Ap = np.zeros(len(y))
-        B = np.zeros(len(y))
-    
-        A[bool1_l] = ginv(yhat[bool1_l] - epsilon) - ginv(yhat[bool1_l])
-        A[bool1_r] = ginv(yhat[bool1_r] + epsilon) - ginv(yhat[bool1_r])
-        Ap[bool1_l] = ginvp(yhat[bool1_l] - epsilon) - ginvp(yhat[bool1_l])
-        Ap[bool1_r] = ginvp(yhat[bool1_r] + epsilon) - ginvp(yhat[bool1_r])
-    
-        A[bool2_l] = ginv(yhat[bool2_l] - epsilon) - ginv(yhat[bool2_l])
-        A[bool2_r] = ginv(yhat[bool2_r] + epsilon) - ginv(yhat[bool2_r])
-        Ap[bool2_l] = ginvp(yhat[bool2_l] - epsilon) - ginvp(yhat[bool2_l])
-        Ap[bool2_r] = ginvp(yhat[bool2_r] + epsilon) - ginvp(yhat[bool2_r])
-    
-        B[bool1_l] = y[bool1_l] - ginv(g(y[bool1_l]) + epsilon)
-        B[bool1_r] = y[bool1_r] - ginv(g(y[bool1_r]) - epsilon)
-        
-        B[bool2_l] = y[bool2_l] - ginv(g(y[bool2_l]) + epsilon)
-        B[bool2_r] = y[bool2_r] - ginv(g(y[bool2_r]) - epsilon)    
-    
-        # loss computation
-        
-        loss[bool1_l] = (y[bool1_l]-ginv(yhat[bool1_l]))**2 * \
-                        (1/np.abs(A[bool1_l]) + 1/np.abs(B[bool1_l]))
-        loss[bool1_r] = (y[bool1_r]-ginv(yhat[bool1_r]))**2 * \
-                        (1/np.abs(A[bool1_r]) + 1/np.abs(B[bool1_r]))
-        
-        loss[bool2_l] = 4*np.abs(y[bool2_l] - ginv(yhat[bool2_l])) - \
-                        (np.abs(A[bool2_l]) + np.abs(B[bool2_l]))
-        loss[bool2_r] = 4*np.abs(y[bool2_r] - ginv(yhat[bool2_r])) - \
-                        (np.abs(A[bool2_r]) + np.abs(B[bool2_r]))
-        
-        loss = np.sum(loss)
-        
-        # gradient computation
-        
-        grad[bool1_l] = -2*(y[bool1_l]-ginv(yhat[bool1_l]))*ginvp(yhat[bool1_l]) * \
-                        (1/np.abs(A[bool1_l]) + 1/np.abs(B[bool1_l])) - \
-                        (y[bool1_l]-ginv(yhat[bool1_l]))**2 * \
-                        (1/(np.abs(A[bool1_l])**2))*sgn(A[bool1_l])*Ap[bool1_l]
-    
-        grad[bool1_r] = -2*(y[bool1_r]-ginv(yhat[bool1_r]))*ginvp(yhat[bool1_r]) * \
-                        (1/np.abs(A[bool1_r]) + 1/np.abs(B[bool1_r])) - \
-                        (y[bool1_r]-ginv(yhat[bool1_r]))**2 * \
-                        (1/(np.abs(A[bool1_r])**2))*sgn(A[bool1_r])*Ap[bool1_r]    
-    
-        grad[bool2_l] = -4 * sgn(y[bool2_l] - ginv(yhat[bool2_l])) * ginvp(
-                        yhat[bool2_l]) - sgn(A[bool2_l]) * Ap[bool2_l]
-    
-        grad[bool2_r] = -4 * sgn(y[bool2_r] - ginv(yhat[bool2_r])) * ginvp(
-                        yhat[bool2_r]) - sgn(A[bool2_r]) * Ap[bool2_r]    
-                
-        grad = np.dot(grad.reshape(1,-1),X)
-    
-        del A ,Ap ,B ,bool1_l ,bool1_r ,bool2_l ,bool2_r 
-        
-        return loss , grad
+    return loss , grad
 
 class GeneralizedHuberRegressor():
-    
+    """Linear regression model that is robust to outliers and allows for a 
+    link function.
+    The Generalized Huber Regressor optimizes a term proportional to 
+    ``(y - ginv(X'w/scale))**2`` for the samples where 
+    ``|g(y) - (X'w/scale)| <= epsilon`` and a term proportional to 
+    `|y - ginv(X'w/scale)|`` for the samples where 
+    ``|(y - (X'w/scale))| > epsilon``, where w is to be optimized. 
+    The parameter scale simply serves as a preconditioner to achieve numerical
+    stability. Note that this does not take into account the fact that 
+    the different features of X may be of different scales.
+    Parameters
+    ----------
+    epsilon : float, default 1.0
+        The parameter epsilon controls the number of samples that should be
+        classified as outliers. 
+    max_iter : int, default 100
+        Maximum number of iterations that
+        ``scipy.optimize.minimize(method="L-BFGS-B")`` should run for.
+    fit_intercept : bool, default True
+        Whether or not to fit the intercept. This can be set to False
+        if the data is already centered around the origin.
+    tol : float, default 1e-5
+        The iteration will stop when
+        ``max{|proj g_i | i = 1, ..., n}`` <= ``tol``
+        where pg_i is the i-th component of the projected gradient.
+    scale : float, default 10.0
+        Preconditioner for better numerical stability.     
+    Attributes
+    ----------
+    coef_ : array, shape (n_features,)
+        Features got by optimizing the generalized Huber loss.
+    intercept_ : float
+        Bias.
+    n_iter_ : int
+        Number of iterations that
+        ``scipy.optimize.minimize(method="L-BFGS-B")`` has run for.
+        .. versionchanged:: 0.20
+            In SciPy <= 1.0.0 the number of lbfgs iterations may exceed
+            ``max_iter``. ``n_iter_`` will now report at most ``max_iter``.
+    Examples
+    --------
+    >>> import numpy as np
+    >>> from sklearn.linear_model import HuberRegressor, LinearRegression
+    >>> from sklearn.datasets import make_regression
+    >>> rng = np.random.RandomState(0)
+    >>> X, y, coef = make_regression(
+    ...     n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)
+    >>> X[:4] = rng.uniform(10, 20, (4, 2))
+    >>> y[:4] = rng.uniform(10, 20, 4)
+    >>> huber = HuberRegressor().fit(X, y)
+    >>> huber.score(X, y)
+    -7.284...
+    >>> huber.predict(X[:1,])
+    array([806.7200...])
+    >>> linear = LinearRegression().fit(X, y)
+    >>> print("True coefficients:", coef)
+    True coefficients: [20.4923...  34.1698...]
+    >>> print("Huber coefficients:", huber.coef_)
+    Huber coefficients: [17.7906... 31.0106...]
+    >>> print("Linear Regression coefficients:", linear.coef_)
+    Linear Regression coefficients: [-1.9221...  7.0226...]
+    References
+    ----------
+    .. [1] Damian Draxler, 
+    https://towardsdatascience.com/generalized-huber-regression-505afaff24c
+    """    
     def __init__(self,epsilon=1.0,max_iter=100,tol=1e-5, scale=10,
                  fit_intercept=True, link_dict={'g':_log,'ginv':_loginv,'ginvp':_loginvp}):
         self.epsilon = epsilon
