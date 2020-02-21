@@ -90,7 +90,6 @@ def _generalized_huber_loss_and_gradient(w, X, y, epsilon, link_dict):
         grad = np.dot(grad.reshape(1,-1),X)
     
         del A ,Ap ,B ,bool1_l ,bool1_r ,bool2_l ,bool2_r 
-        print(loss)
         
         return loss , grad
 
