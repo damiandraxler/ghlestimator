@@ -161,25 +161,25 @@ class GeneralizedHuberRegressor():
     Examples
     --------
     >>> import numpy as np
-    >>> from sklearn.linear_model import HuberRegressor, LinearRegression
+    >>> from sklearn.linear_model import HuberRegressor
     >>> from sklearn.datasets import make_regression
     >>> rng = np.random.RandomState(0)
     >>> X, y, coef = make_regression(
     ...     n_samples=200, n_features=2, noise=4.0, coef=True, random_state=0)
     >>> X[:4] = rng.uniform(10, 20, (4, 2))
     >>> y[:4] = rng.uniform(10, 20, 4)
-    >>> huber = HuberRegressor().fit(X, y)
-    >>> huber.score(X, y)
+    >>> ghuber = GeneralizedHuberRegressor().fit(X, y)
+    >>> ghuber.score(X, y)
     -7.284...
-    >>> huber.predict(X[:1,])
+    >>> ghuber.predict(X[:1,])
     array([806.7200...])
-    >>> linear = LinearRegression().fit(X, y)
+    >>> huber = HuberRegression().fit(X, y)
     >>> print("True coefficients:", coef)
     True coefficients: [20.4923...  34.1698...]
-    >>> print("Huber coefficients:", huber.coef_)
-    Huber coefficients: [17.7906... 31.0106...]
-    >>> print("Linear Regression coefficients:", linear.coef_)
-    Linear Regression coefficients: [-1.9221...  7.0226...]
+    >>> print("Generalized Huber coefficients:", ghuber.coef_)
+    Generalized Huber coefficients: [17.7906... 31.0106...]
+    >>> print("Huber Regression coefficients:", huber.coef_)
+    Huber Regression coefficients: [-1.9221...  7.0226...]
     References
     ----------
     .. [1] Damian Draxler, 
@@ -196,6 +196,18 @@ class GeneralizedHuberRegressor():
 
     def fit(self, X, y):
         
+        if len(X.shape)==1:
+            raise ValueError("Expected 2D array, got 1D array instead:%s \n"            
+                 "Reshape your data either using array.reshape(-1, 1) if your "
+                 "data has a single feature or array.reshape(1, -1) if it " 
+                 "contains a single sample."% X)
+            
+        if len(y.shape)==2:
+            print("DataConversionWarning: A column-vector y was passed when "
+                  "a 1d array was expected. Please change the shape of y to "
+                  "(n_samples, ), for example using ravel().")
+            y = y.ravel()
+            
         if self.fit_intercept:
             parameters = np.zeros(X.shape[1] + 1)
         else:
@@ -224,3 +236,11 @@ class GeneralizedHuberRegressor():
     
     def predict(self, X, y=None):
         return self.link_dict['ginv'](np.dot(X,self.coef_) + self.intercept_)
+
+    def score(self, X, y):
+        if len(y.shape)==2:
+            y = y.ravel()    
+        y_pred = self.predict(X,y)
+        u = ((y - y_pred)**2).sum()
+        v = ((y - y.mean())**2).sum()
+        return (1 - u/v)
