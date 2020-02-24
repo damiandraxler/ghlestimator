@@ -170,16 +170,20 @@ class GeneralizedHuberRegressor():
     >>> y[:4] = rng.uniform(10, 20, 4)
     >>> ghuber = GeneralizedHuberRegressor().fit(X, y)
     >>> ghuber.score(X, y)
-    -7.284...
+    0.094...
     >>> ghuber.predict(X[:1,])
+    array([38.0325...])
+    >>> huber = HuberRegressor().fit(X, y)
+    >>> huber.score(X, y)
+    -7.2846...
+    >>> huber.predict(X[:1,])
     array([806.7200...])
-    >>> huber = HuberRegression().fit(X, y)
     >>> print("True coefficients:", coef)
     True coefficients: [20.4923...  34.1698...]
     >>> print("Generalized Huber coefficients:", ghuber.coef_)
-    Generalized Huber coefficients: [17.7906... 31.0106...]
+    Generalized Huber coefficients: [0.0468... 0.3324...]
     >>> print("Huber Regression coefficients:", huber.coef_)
-    Huber Regression coefficients: [-1.9221...  7.0226...]
+    Huber Regression coefficients: [17.7906...  31.0106...]
     References
     ----------
     .. [1] Damian Draxler, 
