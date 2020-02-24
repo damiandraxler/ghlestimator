@@ -25,6 +25,11 @@ def _generalized_huber_loss_and_gradient(w, X, y, epsilon, link_dict):
         Target vector.
     epsilon : float
         Parameter of the generalized Huber estimator.
+    link_dict : dictionary
+        Dictionary containing a link function 'g', it's inverse function 'ginv'
+        and the derivative of the latter 'ginvp'. All three are callables of 
+        the form fun(x) -> ndarray where both x and ndarray are 1-D arrays with
+        shape (n_samples,).    
     Returns
     -------
     loss : float
@@ -145,7 +150,8 @@ class GeneralizedHuberRegressor():
         ``max{|proj g_i | i = 1, ..., n}`` <= ``tol``
         where pg_i is the i-th component of the projected gradient.
     scale : float, default 10.0
-        Preconditioner for better numerical stability.     
+        Preconditioner for better numerical stability.
+    link_dict : dictionary, default {'g':_log,'ginv':_loginv,'ginvp':_loginvp}         
     Attributes
     ----------
     coef_ : array, shape (n_features,)
@@ -199,6 +205,11 @@ class GeneralizedHuberRegressor():
         self.link_dict = link_dict
 
     def fit(self, X, y):
+        
+        if self.epsilon < 0.0:
+            raise ValueError(
+                "epsilon should be greater than or equal to 0.0, got %f"
+                % self.epsilon)
         
         if len(X.shape)==1:
             raise ValueError("Expected 2D array, got 1D array instead:%s \n"            
