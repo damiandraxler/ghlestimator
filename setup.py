@@ -10,7 +10,7 @@ requirements = [
 
 setuptools.setup(
     name="ghlestimator", # Replace with your own username
-    version="0.0.2",
+    version="0.0.3",
     author="Damian Draxler",
     author_email="damiandraxler01@gmail.com",
     description="Linear generalized Huber estimator compatible with scikit-learn.",
