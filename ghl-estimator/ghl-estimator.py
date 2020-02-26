@@ -6,9 +6,14 @@ def sgn(x):
     sig[sig == 0] = 1
     return sig
 
-_log = lambda x: sgn(x) * np.log(1 + np.abs(x))
-_loginv = lambda x: sgn(x) * (np.exp(np.abs(x)) - 1)
-_loginvp = lambda x: np.exp(np.abs(x))
+def _log(x): 
+    return sgn(x) * np.log(1 + np.abs(x))
+
+def _loginv(x):
+    return sgn(x) * (np.exp(np.abs(x)) - 1)
+
+def _loginvp(x): 
+    return np.exp(np.abs(x))
 
 def _generalized_huber_loss_and_gradient(w, X, y, epsilon, link_dict):
     """Returns the generalized Huber loss and the gradient.
