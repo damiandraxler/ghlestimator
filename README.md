@@ -1,57 +1,71 @@
 # ghl-estimator
 
-Linear generalized Huber estimator compatible with scikit-learn. A detailed 
+Linear Generalized Huber Regressor compatible with scikit-learn. A detailed 
 explanation of the underlying generalized Huber objective function can be found
-[here](https://towardsdatascience.com/generalized-huber-regression-505afaff24c) 
-and in [1].
+[here](https://towardsdatascience.com/generalized-huber-regression-505afaff24c).
 
-[1]: https://towardsdatascience.com/generalized-huber-regression-505afaff24c
+The Generalized Huber Regressor depends on the definition of a invertible link function ``g`` and optimizes a term proportional to 
+``(y - ginv(X'w))**2`` for samples where 
+``|g(y) - (X'w)| <= epsilon`` and a term proportional to 
+``|y - ginv(X'w)|`` for samples where 
+``|g(y) - (X'w)| > epsilon``, where w is to be optimized and ``ginv`` denotes the inverse of ``g``.  
 
-Linear regression model that is robust to outliers allows for a 
-link function and is compatible with scikit-learn.
-The Generalized Huber Regressor optimizes a term proportional to 
-``(y - ginv(X'w/scale))**2`` for the samples where 
-``|g(y) - (X'w/scale)| <= epsilon`` and a term proportional to 
-`|y - ginv(X'w/scale)|`` for the samples where 
-``|(y - (X'w/scale))| > epsilon``, where w is to be optimized. 
-The parameter scale simply serves as a preconditioner to achieve numerical
-stability. Note that this does not take into account the fact that 
-the different features of X may be of different scales.
 Parameters
 ----------
-epsilon : float, default 1.0
-    The parameter epsilon controls the number of samples that should be
-    classified as outliers. 
-max_iter : int, default 100
+
+    class GeneralizedHuberRegressor(epsilon=1.0,max_iter=100,tol=1e-5, scale=10,
+    fit_intercept=True, link_dict={'g':_log,'ginv':_loginv,'ginvp':_loginvp})
+
+**epsilon : float, default 1.0**
+
+    The parameter epsilon defines the crossover between the rmse type of loss 
+    and the mae type of loss.  
+**max_iter : int, default 100**
+
     Maximum number of iterations that
-    ``scipy.optimize.minimize(method="L-BFGS-B")`` should run for.
-fit_intercept : bool, default True
-    Whether or not to fit the intercept. This can be set to False
-    if the data is already centered around the origin.
-tol : float, default 1e-5
-    The iteration will stop when
-    ``max{|proj g_i | i = 1, ..., n}`` <= ``tol``
+    scipy.optimize.minimize(method="L-BFGS-B") should run for.
+**fit_intercept : bool, default True**
+
+    Whether or not to fit the intercept.
+**tol : float, default 1e-5**
+
+    The iteration will stop when max{|proj g_i | i = 1, ..., n} <= tol
     where pg_i is the i-th component of the projected gradient.
-scale : float, default 10.0
-    Preconditioner for better numerical stability.
-link_dict : dictionary, default {'g':_log,'ginv':_loginv,'ginvp':_loginvp}         
+**scale : float, default 10.0**
+
+    Preconditioner for better numerical stability. Input array is internally 
+    divided by scale.
+**link_dict : dictionary, default {'g':_log,'ginv':_loginv,'ginvp':_loginvp}**
+
+    The link function 'g', it's inverse 'ginv' and the derivative of the 
+    latter 'ginvp' have to be specified as callables. 
+    The default link function is g(x) = sign(x)log(1+|x|).              
 Attributes
 ----------
-coef_ : array, shape (n_features,)
-    Features got by optimizing the generalized Huber loss.
-intercept_ : float
-    Bias.
-n_iter_ : int
+**coef_ : array, shape (n_features,)**
+
+    Fitted coefficients got by optimizing the generalized Huber loss.
+**intercept_ : float**
+    
+    The bias.
+**n_iter_ : int**
+    
     Number of iterations that
-    ``scipy.optimize.minimize(method="L-BFGS-B")`` has run for.
-    .. versionchanged:: 0.20
-        In SciPy <= 1.0.0 the number of lbfgs iterations may exceed
-        ``max_iter``. ``n_iter_`` will now report at most ``max_iter``.
+    scipy.optimize.minimize(method="L-BFGS-B") has run for.
+Methods
 ----------
-.. [1] Damian Draxler, 
-https://towardsdatascience.com/generalized-huber-regression-505afaff24c
+**fit(self, X, y)**
 
+    Fit the model to the given training features X and target y both given as 
+    ndarrays.
 
+**predict(self, X)**
+
+    Predict using the fitted linear model.
+
+**score(self, X, y)**
+
+    Return the coefficient of determination R^2 of the prediction.
 ## Installation
 
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install ghl-estimator.

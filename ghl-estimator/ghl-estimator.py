@@ -135,7 +135,7 @@ class GeneralizedHuberRegressor():
     ``(y - ginv(X'w/scale))**2`` for the samples where 
     ``|g(y) - (X'w/scale)| <= epsilon`` and a term proportional to 
     `|y - ginv(X'w/scale)|`` for the samples where 
-    ``|(y - (X'w/scale))| > epsilon``, where w is to be optimized. 
+    ``|g(y) - (X'w/scale)| > epsilon``, where w is to be optimized. 
     The parameter scale simply serves as a preconditioner to achieve numerical
     stability. Note that this does not take into account the fact that 
     the different features of X may be of different scales.
@@ -148,8 +148,7 @@ class GeneralizedHuberRegressor():
         Maximum number of iterations that
         ``scipy.optimize.minimize(method="L-BFGS-B")`` should run for.
     fit_intercept : bool, default True
-        Whether or not to fit the intercept. This can be set to False
-        if the data is already centered around the origin.
+        Whether or not to fit the intercept.
     tol : float, default 1e-5
         The iteration will stop when
         ``max{|proj g_i | i = 1, ..., n}`` <= ``tol``
