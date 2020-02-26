@@ -10,13 +10,13 @@ requirements = [
 
 setuptools.setup(
     name="ghlestimator", # Replace with your own username
-    version="0.0.2",
+    version="0.0.1",
     author="Damian Draxler",
     author_email="damiandraxler01@gmail.com",
     description="Linear generalized Huber estimator compatible with scikit-learn.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/damiandraxler/ghl-estimator",
+    url="https://github.com/damiandraxler/ghlestimator",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3.7",

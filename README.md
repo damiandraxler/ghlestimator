@@ -1,4 +1,4 @@
-# ghl-estimator
+# ghlestimator
 
 Linear Generalized Huber Regressor compatible with scikit-learn. A detailed 
 explanation of the underlying generalized Huber objective function can be found
@@ -68,16 +68,16 @@ Methods
     Return the coefficient of determination R^2 of the prediction.
 ## Installation
 
-Use the package manager [pip](https://pip.pypa.io/en/stable/) to install ghl-estimator.
+Use the package manager [pip](https://pip.pypa.io/en/stable/) to install ghlestimator.
 
 ```bash
-pip install ghl-estimator
+pip install ghlestimator
 ```
 
 ## Usage
 
 ```python
-import ghl-estimator as ghl
+import ghlestimator as ghl
 
 ghl = GeneralizedHuberRegressor() # initializes default ghl estimator 
 ghl.fit(X, y) # fit on features X and target y
