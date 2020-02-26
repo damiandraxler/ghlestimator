@@ -77,7 +77,7 @@ pip install ghlestimator
 ## Usage
 
 ```python
-import ghlestimator as ghl
+from ghlestimator import GeneralizedHuberRegressor
 
 ghl = GeneralizedHuberRegressor() # initializes default ghl estimator 
 ghl.fit(X, y) # fit on features X and target y
